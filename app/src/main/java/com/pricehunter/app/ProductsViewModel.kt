@@ -21,7 +21,7 @@ enum class Sort(val label: String) {
 }
 
 class ProductsViewModel(
-    private val repo: ProductRepository = FakeProductRepository()
+    private val repo: ProductRepository = RemoteProductRepository()
 ) : ViewModel() {
 
     private val _all = MutableStateFlow<List<Product>>(emptyList())
