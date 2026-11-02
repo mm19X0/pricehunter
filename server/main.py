@@ -132,3 +132,4 @@ def manual_refresh(x_api_key: str | None = Header(default=None, alias="X-API-Key
         raise HTTPException(status_code=401, detail="Invalid API key.")
     threading.Thread(target=refresh, daemon=True).start()
     return {"started": True}
+    

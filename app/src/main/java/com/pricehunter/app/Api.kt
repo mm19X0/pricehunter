@@ -10,8 +10,9 @@ import retrofit2.http.Path
 import retrofit2.http.POST
 import retrofit2.http.Query
 
+private const val BASE_URL = "https://pricehunter-server-lifsk2n0r-mm-o19.vercel.app/"
+
 object ApiConfig {
-    const val BASE_URL = BuildConfig.API_BASE_URL
     const val REFRESH_API_KEY = "use-a-long-random-secret"
 }
 
@@ -31,7 +32,7 @@ interface PriceHunterApi {
 object RetrofitClient {
     val api: PriceHunterApi by lazy {
         Retrofit.Builder()
-            .baseUrl(ApiConfig.BASE_URL)
+            .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(PriceHunterApi::class.java)

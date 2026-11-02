@@ -4,15 +4,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val configuredApiBaseUrl = providers.gradleProperty("pricehunterApiBaseUrl")
-    .orElse(providers.environmentVariable("PRICEHUNTER_API_BASE_URL"))
-    .getOrElse("http://10.210.148.215:8000/")
-val apiBaseUrl = if (configuredApiBaseUrl.endsWith("/")) {
-    configuredApiBaseUrl
-} else {
-    "$configuredApiBaseUrl/"
-}
-
 android {
     namespace = "com.pricehunter.app"
     compileSdk = 35
@@ -23,12 +14,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     val signingStoreFile = providers.environmentVariable("PRICEHUNTER_SIGNING_STORE_FILE").orNull

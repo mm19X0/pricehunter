@@ -34,12 +34,12 @@ puts Caddy in front to obtain and renew HTTPS certificates automatically:
 
 3. Run `docker compose up -d --build`, then check
    `https://api.your-domain.example/health`.
-4. Set `PRICEHUNTER_API_BASE_URL` to that HTTPS URL when building the Android app.
-   The build defaults to a placeholder URL, so set this to the deployed HTTPS
-   endpoint before producing an APK.
+4. The Android app connects to the configured HTTPS deployment URL in
+   `app/src/main/java/com/pricehunter/app/Api.kt`. Update `BASE_URL` there if
+   the server URL changes.
 
-For an Android debug build, run `gradle assembleDebug` with that environment
-variable set. For a Play release, create a private upload keystore and pass its
+For an Android debug build, run `gradle assembleDebug`. For a Play release,
+create a private upload keystore and pass its
 path and credentials as `PRICEHUNTER_SIGNING_STORE_FILE`,
 `PRICEHUNTER_SIGNING_STORE_PASSWORD`, `PRICEHUNTER_SIGNING_KEY_ALIAS`, and
 `PRICEHUNTER_SIGNING_KEY_PASSWORD` when running `gradle assembleRelease`. Keep
