@@ -98,25 +98,26 @@ class ProductsViewModel(
             }
         }
 
-        fun refreshProducts() {
-            if (_refreshState.value.isLoading) return
-            _refreshState.value = RefreshState(isLoading = true)
-            viewModelScope.launch {
-                try {
-                    val response = repo.refresh()
-                    _refreshState.value = if (response.started) {
-                        RefreshState(message = "Product refresh started on the server.")
-                    } else {
-                        RefreshState(error = "The server did not start the product refresh.")
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w("PriceHunter", "Unable to start product refresh", e)
-                    _refreshState.value = RefreshState(
-                        error = "Unable to start product refresh. Check the server connection."
-                    )
+    }
+
+    fun refreshProducts() {
+        if (_refreshState.value.isLoading) return
+        _refreshState.value = RefreshState(isLoading = true)
+        viewModelScope.launch {
+            try {
+                val response = repo.refresh()
+                _refreshState.value = if (response.started) {
+                    RefreshState(message = "Product refresh started on the server.")
+                } else {
+                    RefreshState(error = "The server did not start the product refresh.")
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("PriceHunter", "Unable to start product refresh", e)
+                _refreshState.value = RefreshState(
+                    error = "Unable to start product refresh. Check the server connection."
+                )
             }
         }
     }
