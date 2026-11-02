@@ -57,6 +57,13 @@ fun HomeScreen(vm: ProductsViewModel) {
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var selectedTab by remember { mutableStateOf("Products") }
     val categories = all.map { it.category }.distinct().sorted()
+    val activeFilterCount =
+        (if (filters.stores.isNotEmpty()) 1 else 0) +
+            (if (filters.brands.isNotEmpty()) 1 else 0) +
+            (if (filters.categories.isNotEmpty()) 1 else 0) +
+            (if (filters.maxPrice != null) 1 else 0) +
+            (if (filters.onlyDeals) 1 else 0) +
+            (if (filters.inStockOnly) 1 else 0)
 
     fun toggleFavorite(productId: String) {
         val updated = if (productId in favoriteIds) favoriteIds - productId else favoriteIds + productId
@@ -142,7 +149,15 @@ fun HomeScreen(vm: ProductsViewModel) {
                         )
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             item {
-                                AssistChip(onClick = { showFilters = true }, label = { Text("Filters") })
+                                AssistChip(
+                                    onClick = { showFilters = true },
+                                    label = {
+                                        Text(
+                                            if (activeFilterCount > 0) "Filters ($activeFilterCount)"
+                                            else "Filters"
+                                        )
+                                    }
+                                )
                             }
                             items(stores) { store ->
                                 FilterChip(
@@ -268,10 +283,27 @@ private fun FiltersSheet(
         Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        Text(
+            "Choose multiple options. Selections in different sections are combined.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Text("Sort by", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Sort.values().forEach {
                 FilterChip(selected = sort == it, onClick = { onSort(it) }, label = { Text(it.label) })
+            }
+        }
+        Text("Store", style = MaterialTheme.typography.titleMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            stores.forEach { store ->
+                FilterChip(
+                    selected = store.id in filters.stores,
+                    onClick = {
+                        onFilters(filters.copy(stores = filters.stores.toggle(store.id)))
+                    },
+                    label = { Text(store.name) }
+                )
             }
         }
         Text("Category", style = MaterialTheme.typography.titleMedium)
@@ -305,7 +337,7 @@ private fun FiltersSheet(
             Switch(filters.onlyDeals, { onFilters(filters.copy(onlyDeals = it)) })
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("In stock only", Modifier.weight(1f))
+            Text("Available only (in stock)", Modifier.weight(1f))
             Switch(filters.inStockOnly, { onFilters(filters.copy(inStockOnly = it)) })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
