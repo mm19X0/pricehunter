@@ -12,11 +12,14 @@ data class Product(
     val oldPrice: Int?,
     val imageUrl: String?,
     val inStock: Boolean,
-    val url: String
+    val url: String,
+    val specifications: Map<String, String>? = null
 ) {
     val discountPercent: Int?
         get() = oldPrice?.takeIf { it > price }?.let { (it - price) * 100 / it }
 }
+
+data class PricePoint(val price: Int, val ts: Long)
 
 val stores = listOf(
     Store("sigma", "Sigma Computer", "https://www.sigma-computer.com/en"),
@@ -31,6 +34,7 @@ fun storeName(id: String) = stores.firstOrNull { it.id == id }?.name ?: id
 // Later we replace this with a real repository that talks to our server.
 interface ProductRepository {
     suspend fun getProducts(): List<Product>
+    suspend fun getPriceHistory(productId: String): List<PricePoint> = emptyList()
 }
 
 class FakeProductRepository : ProductRepository {

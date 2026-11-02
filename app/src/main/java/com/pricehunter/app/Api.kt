@@ -4,17 +4,19 @@ import android.util.Log
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 object ApiConfig {
-    // Android emulator -> your PC:        http://10.0.2.2:8000/
-    // Real phone on the same Wi-Fi:       http://YOUR_PC_IP:8000/   (example: http://192.168.1.20:8000/)
-    // After deploying the server online:  https://your-domain.com/
-    const val BASE_URL = "http://192.168.1.20:8000/"
+    const val BASE_URL = BuildConfig.API_BASE_URL
 }
 
 interface PriceApi {
     @GET("products")
-    suspend fun products(): List<Product>
+    suspend fun products(@Query("limit") limit: Int, @Query("offset") offset: Int): List<Product>
+
+    @GET("products/{productId}/history")
+    suspend fun priceHistory(@Path("productId") productId: String): List<PricePoint>
 }
 
 class RemoteProductRepository : ProductRepository {
@@ -24,11 +26,26 @@ class RemoteProductRepository : ProductRepository {
         .build()
         .create(PriceApi::class.java)
 
+    @Volatile
+    var lastFailed = false
+
     override suspend fun getProducts(): List<Product> = try {
-        api.products()
+        val pageSize = 3000
+        val products = mutableListOf<Product>()
+        var offset = 0
+        do {
+            val page = api.products(pageSize, offset)
+            products.addAll(page)
+            offset += page.size
+        } while (page.size == pageSize)
+        products.also { lastFailed = false }
     } catch (e: Exception) {
+        lastFailed = true
         // Server not reachable: show sample data so the app still opens.
         Log.w("PriceHunter", "Server unreachable, using sample data", e)
         FakeProductRepository().getProducts()
     }
+
+    override suspend fun getPriceHistory(productId: String): List<PricePoint> =
+        api.priceHistory(productId)
 }

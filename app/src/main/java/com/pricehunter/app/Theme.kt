@@ -1,30 +1,24 @@
 package com.pricehunter.app
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val Light = lightColorScheme(
-    primary = Color(0xFF4F46E5),
+    primary = Color(0xFF2563EB),
     onPrimary = Color.White,
-    secondary = Color(0xFF16A34A),
-    background = Color(0xFFF8FAFC),
-    surface = Color(0xFFF8FAFC)
-)
-
-private val Dark = darkColorScheme(
-    primary = Color(0xFF818CF8),
-    onPrimary = Color(0xFF1E1B4B),
-    secondary = Color(0xFF4ADE80),
-    background = Color(0xFF0F172A),
-    surface = Color(0xFF0F172A)
+    secondary = Color(0xFF0F9D78),
+    background = Color(0xFFF6F8FC),
+    surface = Color.White,
+    surfaceVariant = Color(0xFFEEF2F8),
+    onSurface = Color(0xFF172033),
+    onSurfaceVariant = Color(0xFF64748B)
 )
 
 @Composable
 fun PriceHunterTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
+        colorScheme = Light,
         content = content
     )
 }

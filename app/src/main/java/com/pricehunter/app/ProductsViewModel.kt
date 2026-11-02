@@ -2,8 +2,10 @@ package com.pricehunter.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 data class Filters(
     val stores: Set<String> = emptySet(),
@@ -20,6 +22,13 @@ enum class Sort(val label: String) {
     PRICE_HIGH("Price: high to low")
 }
 
+data class PriceHistoryState(
+    val productId: String? = null,
+    val points: List<PricePoint> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 class ProductsViewModel(
     private val repo: ProductRepository = RemoteProductRepository()
 ) : ViewModel() {
@@ -27,19 +36,25 @@ class ProductsViewModel(
     private val _all = MutableStateFlow<List<Product>>(emptyList())
     val all: StateFlow<List<Product>> = _all.asStateFlow()
 
+    val sampleMode = MutableStateFlow(false)
     val query = MutableStateFlow("")
     val filters = MutableStateFlow(Filters())
     val sort = MutableStateFlow(Sort.BEST_DEAL)
+    private val _priceHistory = MutableStateFlow(PriceHistoryState())
+    val priceHistory: StateFlow<PriceHistoryState> = _priceHistory.asStateFlow()
 
     init {
-        viewModelScope.launch { _all.value = repo.getProducts() }
+        viewModelScope.launch {
+            _all.value = repo.getProducts()
+            sampleMode.value = (repo as? RemoteProductRepository)?.lastFailed == true
+        }
     }
 
     val results: StateFlow<List<Product>> =
         combine(_all, query, filters, sort) { list, q, f, s ->
             val words = q.trim().lowercase().split(" ").filter { it.isNotBlank() }
             list.filter { p ->
-                val text = "${p.name} ${p.brand} ${p.category}".lowercase()
+                val text = "${p.name} ${p.brand} ${p.category} ${storeName(p.storeId)} ${p.storeId}".lowercase()
                 words.all { it in text } &&
                     (f.stores.isEmpty() || p.storeId in f.stores) &&
                     (f.brands.isEmpty() || p.brand in f.brands) &&
@@ -55,4 +70,24 @@ class ProductsViewModel(
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun loadPriceHistory(productId: String) {
+        _priceHistory.value = PriceHistoryState(productId = productId, isLoading = true)
+        viewModelScope.launch {
+            try {
+                _priceHistory.value = PriceHistoryState(
+                    productId = productId,
+                    points = repo.getPriceHistory(productId)
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("PriceHunter", "Unable to load price history for $productId", e)
+                _priceHistory.value = PriceHistoryState(
+                    productId = productId,
+                    error = "Price history is currently unavailable."
+                )
+            }
+        }
+    }
 }
