@@ -1,31 +1,44 @@
 package com.pricehunter.app
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.Path
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 object ApiConfig {
     const val BASE_URL = BuildConfig.API_BASE_URL
+    const val REFRESH_API_KEY = "use-a-long-random-secret"
 }
 
-interface PriceApi {
+data class RefreshResponse(val started: Boolean)
+
+interface PriceHunterApi {
     @GET("products")
     suspend fun products(@Query("limit") limit: Int, @Query("offset") offset: Int): List<Product>
 
     @GET("products/{productId}/history")
     suspend fun priceHistory(@Path("productId") productId: String): List<PricePoint>
+
+    @POST("refresh")
+    suspend fun refresh(@Header("X-API-Key") apiKey: String): RefreshResponse
+}
+
+object RetrofitClient {
+    val api: PriceHunterApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(ApiConfig.BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(PriceHunterApi::class.java)
+    }
 }
 
 class RemoteProductRepository : ProductRepository {
-    private val api: PriceApi = Retrofit.Builder()
-        .baseUrl(ApiConfig.BASE_URL)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-        .create(PriceApi::class.java)
-
     @Volatile
     var lastFailed = false
 
@@ -34,12 +47,13 @@ class RemoteProductRepository : ProductRepository {
         val products = mutableListOf<Product>()
         var offset = 0
         do {
-            val page = api.products(pageSize, offset)
+            val page = RetrofitClient.api.products(pageSize, offset)
             products.addAll(page)
             offset += page.size
         } while (page.size == pageSize)
         products.also { lastFailed = false }
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         lastFailed = true
         // Server not reachable: show sample data so the app still opens.
         Log.w("PriceHunter", "Server unreachable, using sample data", e)
@@ -47,5 +61,8 @@ class RemoteProductRepository : ProductRepository {
     }
 
     override suspend fun getPriceHistory(productId: String): List<PricePoint> =
-        api.priceHistory(productId)
+        RetrofitClient.api.priceHistory(productId)
+
+    override suspend fun refresh(): RefreshResponse =
+        RetrofitClient.api.refresh(ApiConfig.REFRESH_API_KEY)
 }

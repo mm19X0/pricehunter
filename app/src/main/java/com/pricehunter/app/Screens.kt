@@ -45,6 +45,7 @@ fun HomeScreen(vm: ProductsViewModel) {
     val sort by vm.sort.collectAsState()
     val sampleMode by vm.sampleMode.collectAsState()
     val history by vm.priceHistory.collectAsState()
+    val refreshState by vm.refreshState.collectAsState()
     val context = LocalContext.current
     val preferences = remember(context) {
         context.getSharedPreferences("pricehunter_local", Context.MODE_PRIVATE)
@@ -158,6 +159,34 @@ fun HomeScreen(vm: ProductsViewModel) {
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = vm::refreshProducts,
+                                enabled = !refreshState.isLoading
+                            ) {
+                                if (refreshState.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text("Refresh prices")
+                            }
+                            refreshState.message?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall)
+                            }
+                            refreshState.error?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
                 }
                 val visibleResults = if (selectedTab == "Favorites") {

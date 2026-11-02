@@ -29,6 +29,12 @@ data class PriceHistoryState(
     val error: String? = null
 )
 
+data class RefreshState(
+    val isLoading: Boolean = false,
+    val message: String? = null,
+    val error: String? = null
+)
+
 class ProductsViewModel(
     private val repo: ProductRepository = RemoteProductRepository()
 ) : ViewModel() {
@@ -42,6 +48,8 @@ class ProductsViewModel(
     val sort = MutableStateFlow(Sort.BEST_DEAL)
     private val _priceHistory = MutableStateFlow(PriceHistoryState())
     val priceHistory: StateFlow<PriceHistoryState> = _priceHistory.asStateFlow()
+    private val _refreshState = MutableStateFlow(RefreshState())
+    val refreshState: StateFlow<RefreshState> = _refreshState.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -87,6 +95,28 @@ class ProductsViewModel(
                     productId = productId,
                     error = "Price history is currently unavailable."
                 )
+            }
+        }
+
+        fun refreshProducts() {
+            if (_refreshState.value.isLoading) return
+            _refreshState.value = RefreshState(isLoading = true)
+            viewModelScope.launch {
+                try {
+                    val response = repo.refresh()
+                    _refreshState.value = if (response.started) {
+                        RefreshState(message = "Product refresh started on the server.")
+                    } else {
+                        RefreshState(error = "The server did not start the product refresh.")
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w("PriceHunter", "Unable to start product refresh", e)
+                    _refreshState.value = RefreshState(
+                        error = "Unable to start product refresh. Check the server connection."
+                    )
+                }
             }
         }
     }

@@ -6,7 +6,7 @@ plugins {
 
 val configuredApiBaseUrl = providers.gradleProperty("pricehunterApiBaseUrl")
     .orElse(providers.environmentVariable("PRICEHUNTER_API_BASE_URL"))
-    .getOrElse("http://192.168.1.4:8000/")
+    .getOrElse("http://10.210.148.215:8000/")
 val apiBaseUrl = if (configuredApiBaseUrl.endsWith("/")) {
     configuredApiBaseUrl
 } else {
@@ -67,6 +67,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")

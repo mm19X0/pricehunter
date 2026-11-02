@@ -35,6 +35,7 @@ fun storeName(id: String) = stores.firstOrNull { it.id == id }?.name ?: id
 interface ProductRepository {
     suspend fun getProducts(): List<Product>
     suspend fun getPriceHistory(productId: String): List<PricePoint> = emptyList()
+    suspend fun refresh(): RefreshResponse
 }
 
 class FakeProductRepository : ProductRepository {
@@ -50,4 +51,6 @@ class FakeProductRepository : ProductRepository {
         Product("9", "Corsair Vengeance 16GB DDR4 3200MHz", "Corsair", "RAM", "elbadr", 1750, 2100, null, true, "https://elbadrgroupeg.store/"),
         Product("10", "HyperX Cloud Stinger Gaming Headset", "HyperX", "Headset", "maximum", 1850, 2200, null, true, "https://maximumhardware.store/")
     )
+
+    override suspend fun refresh(): RefreshResponse = RefreshResponse(started = false)
 }
