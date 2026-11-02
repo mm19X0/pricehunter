@@ -5,18 +5,10 @@ import kotlinx.coroutines.CancellationException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Path
-import retrofit2.http.POST
 import retrofit2.http.Query
 
-private const val BASE_URL = "https://pricehunter-server-lifsk2n0r-mm-o19.vercel.app/"
-
-object ApiConfig {
-    const val REFRESH_API_KEY = "use-a-long-random-secret"
-}
-
-data class RefreshResponse(val started: Boolean)
+private const val BASE_URL = "https://pricehunter-server.vercel.app/"
 
 interface PriceHunterApi {
     @GET("products")
@@ -25,8 +17,6 @@ interface PriceHunterApi {
     @GET("products/{productId}/history")
     suspend fun priceHistory(@Path("productId") productId: String): List<PricePoint>
 
-    @POST("refresh")
-    suspend fun refresh(@Header("X-API-Key") apiKey: String): RefreshResponse
 }
 
 object RetrofitClient {
@@ -40,9 +30,6 @@ object RetrofitClient {
 }
 
 class RemoteProductRepository : ProductRepository {
-    @Volatile
-    var lastFailed = false
-
     override suspend fun getProducts(): List<Product> = try {
         val pageSize = 3000
         val products = mutableListOf<Product>()
@@ -52,18 +39,13 @@ class RemoteProductRepository : ProductRepository {
             products.addAll(page)
             offset += page.size
         } while (page.size == pageSize)
-        products.also { lastFailed = false }
+        products
     } catch (e: Exception) {
         if (e is CancellationException) throw e
-        lastFailed = true
-        // Server not reachable: show sample data so the app still opens.
-        Log.w("PriceHunter", "Server unreachable, using sample data", e)
-        FakeProductRepository().getProducts()
+        Log.w("PriceHunter", "Unable to load products from server", e)
+        throw e
     }
 
     override suspend fun getPriceHistory(productId: String): List<PricePoint> =
         RetrofitClient.api.priceHistory(productId)
-
-    override suspend fun refresh(): RefreshResponse =
-        RetrofitClient.api.refresh(ApiConfig.REFRESH_API_KEY)
 }

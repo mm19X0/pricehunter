@@ -6,6 +6,15 @@ import android.util.Log
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import com.google.gson.JsonParseException
+import retrofit2.HttpException
+
+private fun Exception.userMessage(): String = when (this) {
+    is HttpException -> "server returned HTTP ${code()}"
+    is JsonParseException ->
+        "server returned an invalid response; check whether Vercel deployment protection is enabled"
+    else -> localizedMessage ?: javaClass.simpleName
+}
 
 data class Filters(
     val stores: Set<String> = emptySet(),
@@ -35,6 +44,8 @@ data class RefreshState(
     val error: String? = null
 )
 
+data class ProductLoadState(val error: String? = null)
+
 class ProductsViewModel(
     private val repo: ProductRepository = RemoteProductRepository()
 ) : ViewModel() {
@@ -42,7 +53,8 @@ class ProductsViewModel(
     private val _all = MutableStateFlow<List<Product>>(emptyList())
     val all: StateFlow<List<Product>> = _all.asStateFlow()
 
-    val sampleMode = MutableStateFlow(false)
+    private val _productLoadState = MutableStateFlow(ProductLoadState())
+    val productLoadState: StateFlow<ProductLoadState> = _productLoadState.asStateFlow()
     val query = MutableStateFlow("")
     val filters = MutableStateFlow(Filters())
     val sort = MutableStateFlow(Sort.BEST_DEAL)
@@ -53,8 +65,17 @@ class ProductsViewModel(
 
     init {
         viewModelScope.launch {
-            _all.value = repo.getProducts()
-            sampleMode.value = (repo as? RemoteProductRepository)?.lastFailed == true
+            try {
+                _all.value = repo.getProducts()
+                _productLoadState.value = ProductLoadState()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("PriceHunter", "Unable to load products", e)
+                _productLoadState.value = ProductLoadState(
+                    error = "Couldn't load products: ${e.userMessage()}"
+                )
+            }
         }
     }
 
@@ -105,18 +126,20 @@ class ProductsViewModel(
         _refreshState.value = RefreshState(isLoading = true)
         viewModelScope.launch {
             try {
-                val response = repo.refresh()
-                _refreshState.value = if (response.started) {
-                    RefreshState(message = "Product refresh started on the server.")
-                } else {
-                    RefreshState(error = "The server did not start the product refresh.")
-                }
+                _all.value = repo.getProducts()
+                _productLoadState.value = ProductLoadState()
+                _refreshState.value = RefreshState(
+                    message = "Loaded ${_all.value.size} saved products. Prices update every three hours."
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("PriceHunter", "Unable to start product refresh", e)
+                Log.w("PriceHunter", "Unable to reload products", e)
+                _productLoadState.value = ProductLoadState(
+                    error = "Couldn't load products: ${e.userMessage()}"
+                )
                 _refreshState.value = RefreshState(
-                    error = "Unable to start product refresh. Check the server connection."
+                    error = "Unable to reload products: ${e.userMessage()}"
                 )
             }
         }

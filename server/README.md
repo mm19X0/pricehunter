@@ -1,70 +1,52 @@
 # PriceHunter server
 
-## Run locally
+The API serves saved products and price history. Product scraping runs in the
+GitHub Actions workflow every three hours and writes to PostgreSQL, so it
+continues independently of the Android app being open.
+
+## Vercel deployment
+
+1. Create a PostgreSQL database, for example a Supabase project. Copy its
+   PostgreSQL connection string (use the Session pooler connection string if
+   the direct database address is not reachable).
+2. Set `DATABASE_URL` in the Vercel project's environment variables and in the
+   GitHub repository's Actions secrets. Use the same connection string in both
+   places; do not commit it or send it in chat.
+3. Ensure the Vercel project's root directory points to `server`, then deploy.
+   The API initializes its tables on startup.
+4. In Vercel, disable Deployment Protection for the production deployment so
+   the Android app can reach `/products` and `/health` without a Vercel login.
+5. Add this workflow to the repository's default branch. GitHub Actions will
+   run the first refresh at the next scheduled time; you can also start it
+   manually from the Actions tab. Scheduled workflow times are UTC and may be
+   delayed by GitHub.
+6. Set `BASE_URL` in `app/src/main/java/com/pricehunter/app/Api.kt` to the
+   public Vercel deployment URL if it changes.
+
+The free Supabase database can pause after a week without database activity.
+Opening the app accesses the database through the API and normally keeps the
+project active.
+
+## Local development
+
+Install dependencies and run the API from this directory:
 
 ```powershell
-cd server
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-$env:REFRESH_API_KEY = "use-a-long-random-secret"
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-The API is available at `http://localhost:8000`. Product history is returned by
-`GET /products/{product_id}/history`; its `ts` values are Unix timestamps in
-seconds. `POST /refresh` requires the `X-API-Key` header and the server-side
-`REFRESH_API_KEY` environment variable. Do not put that key in the Android app.
-Product results support `limit` (up to 3,000) and `offset` for paging; the app
-loads each page so larger catalogues are not truncated.
+Without `DATABASE_URL`, local development uses `prices.db` and starts a
+three-hour scheduler. To run one refresh manually, use `python main.py`.
 
-## Cloud deployment
-
-The Docker Compose setup runs the API, persists SQLite in a named volume, and
-puts Caddy in front to obtain and renew HTTPS certificates automatically:
-
-1. Use a cloud VM with Docker Compose installed, a stable public IP, and inbound
-   ports 80/443 open. A domain or subdomain must point to that IP.
-2. In `server`, create a local `.env` file (it is git-ignored):
-
-   ```dotenv
-   API_DOMAIN=api.your-domain.example
-   REFRESH_API_KEY=replace-with-a-long-random-secret
-   ```
-
-3. Run `docker compose up -d --build`, then check
-   `https://api.your-domain.example/health`.
-4. The Android app connects to the configured HTTPS deployment URL in
-   `app/src/main/java/com/pricehunter/app/Api.kt`. Update `BASE_URL` there if
-   the server URL changes.
-
-For an Android debug build, run `gradle assembleDebug`. For a Play release,
-create a private upload keystore and pass its
-path and credentials as `PRICEHUNTER_SIGNING_STORE_FILE`,
-`PRICEHUNTER_SIGNING_STORE_PASSWORD`, `PRICEHUNTER_SIGNING_KEY_ALIAS`, and
-`PRICEHUNTER_SIGNING_KEY_PASSWORD` when running `gradle assembleRelease`. Keep
-the keystore and passwords out of source control and backups accessible to
-others; losing the signing key can prevent future updates. Google Play
-App Signing and Play Console distribution help establish app authenticity, but
-a signing key alone cannot guarantee a Play Protect verdict or remove warnings
-for APKs installed from outside the Play Store. The refresh API key is an
-administrative server secret and must never be embedded in the Android app.
-
-This config keeps the database on a persistent Docker volume. Free hosting plans
-do not guarantee 24/7 availability; many free app-hosting plans sleep, and VM
-free-tier capacity depends on provider, region, and account eligibility. A VM
-also needs ongoing monitoring and backups. No cloud account or deployment
-credentials are available in this project, so deployment itself must be
-completed in the account owner's cloud console.
+The API provides `GET /products`, `GET /products/{product_id}/history`, and
+`GET /health`. The app's “Reload saved prices” button fetches the latest rows;
+it does not start a scrape. Refreshes are run by the scheduled workflow.
 
 ## Stores and coverage
 
-The app lists Sigma Computer, El Nour Tech, CompuMarts, El Badr Group, and
-Maximum Hardware. Live catalogue adapters cover El Nour Tech's read-only API,
-CompuMarts' public Shopify product feed, and the OpenCart catalogues for El Badr
-Group and Maximum Hardware. Sigma's product API rejects unauthenticated product
-requests, but its public category pages render product names, images, prices,
-availability, and pagination in the page HTML. The Sigma adapter reads those
-public storefront pages across the public category list instead of calling the
-restricted products endpoint. Do not treat sample products in the app as live
-store inventory.
+The adapters cover Sigma Computer, El Nour Tech, CompuMarts, El Badr Group,
+and Maximum Hardware. Some stores may fail independently; failed stores are
+reported in the workflow logs, while successfully fetched stores are saved.

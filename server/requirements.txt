@@ -2,5 +2,6 @@ fastapi
 uvicorn
 httpx
 beautifulsoup4
-apscheduler
 mangum
+psycopg[binary]
+apscheduler

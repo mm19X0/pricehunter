@@ -43,7 +43,7 @@ fun HomeScreen(vm: ProductsViewModel) {
     val query by vm.query.collectAsState()
     val filters by vm.filters.collectAsState()
     val sort by vm.sort.collectAsState()
-    val sampleMode by vm.sampleMode.collectAsState()
+    val productLoadState by vm.productLoadState.collectAsState()
     val history by vm.priceHistory.collectAsState()
     val refreshState by vm.refreshState.collectAsState()
     val context = LocalContext.current
@@ -120,9 +120,9 @@ fun HomeScreen(vm: ProductsViewModel) {
             } else {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (sampleMode) {
+                        productLoadState.error?.let { error ->
                             Text(
-                                "Server not reachable - showing sample data",
+                                error,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.labelMedium,
                                 modifier = Modifier.fillMaxWidth()
@@ -174,7 +174,7 @@ fun HomeScreen(vm: ProductsViewModel) {
                                     )
                                     Spacer(Modifier.width(8.dp))
                                 }
-                                Text("Refresh prices")
+                                Text("Reload saved prices")
                             }
                             refreshState.message?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall)

@@ -4,7 +4,6 @@ services:
     restart: unless-stopped
     environment:
       PRICEHUNTER_DB: /data/prices.db
-      REFRESH_API_KEY: ${REFRESH_API_KEY:?Set REFRESH_API_KEY in the environment}
     volumes:
       - pricehunter-data:/data
 
