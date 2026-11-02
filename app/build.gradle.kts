@@ -6,7 +6,7 @@ plugins {
 
 val configuredApiBaseUrl = providers.gradleProperty("pricehunterApiBaseUrl")
     .orElse(providers.environmentVariable("PRICEHUNTER_API_BASE_URL"))
-    .getOrElse("https://api.pricehunter.example/")
+    .getOrElse("http://192.168.1.4:8000/")
 val apiBaseUrl = if (configuredApiBaseUrl.endsWith("/")) {
     configuredApiBaseUrl
 } else {
